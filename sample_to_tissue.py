@@ -1,4 +1,4 @@
-import numpy as np
+import pandas as pd
 
 
 # Produces csv file with only results for my GOIs
@@ -33,7 +33,6 @@ def add_tissue_type_to_columns():
             if temp[0] != "SAMPID":
                 try:
                     tissue_type_dict[temp[0]] = temp[5] + ": " + temp[6]
-                    # do a tuple or list here if want to separate the tissues/subtissues after all
                 except:
                     print "temp to dict failed, %r" % temp
 
@@ -59,31 +58,29 @@ def add_tissue_type_to_columns():
         output.write(",".join(tissues_in_order) + "\n")
         output.write(actual_results)
 
-# surely this doesn't really need to be a separate function. But how to get the list back out to upper scope?
-def get_names_list():
-    with open("output_GOI_with_tissue_types_test.csv", "r") as tt: # this test file is sorted by tissue too
-        tt.readline()
-        names_list = tt.readline().strip("\n").replace(" ","").replace("-", "").replace(":","").split(",") # Don't strip everything, those empty strings are important
-        return names_list
 
 # Tidies the results into an easy format for pasting into GraphPad Prism for pretty graphs
-# maybe it would be worth using Pandas so I can have row/column names?
-
 def get_mean_sd_n_for_gene_per_tissue_type():
 
-    names_list = get_names_list()
-    #print names_list
-    test = np.genfromtxt("output_GOI_with_tissue_types_test.csv", delimiter=",", skip_header=2,  dtype=None, names=names_list)
+    results_as_dataframe = pd.read_csv("output_GOI_with_tissue_types.txt", index_col=1) #header=1
+    results_as_dataframe = results_as_dataframe.transpose().drop("Name", axis=0).convert_objects(convert_numeric=True)
+    #print results_as_dataframe.dtypes
 
-    print "test %r" % test
+    new_columns = results_as_dataframe.columns.values
+    new_columns[0] = 'Gene'
+    results_as_dataframe.columns = new_columns
 
-    hippo_list = []
-    for i in test.dtype.names:
-        if "Hippo" in i:
-            hippo_list.append(i)
-    hippo_columns = test[hippo_list]
-    print "hippos %r" % hippo_columns
-    #print np.mean(hippo_columns)
+    results_groupby_object = results_as_dataframe.groupby(["Gene"])
+    #print results_groupby_object.describe()
+
+    final_result = results_groupby_object.agg(["mean", "std", "count"])
+    print final_result
+    final_result.to_csv("output_GOI_mean_sd_n.txt")
+
+    print "finished"
+
+
+
 
 
 
